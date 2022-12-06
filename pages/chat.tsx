@@ -7,22 +7,22 @@ import io from "socket.io-client";
 import { useDispatch } from "react-redux";
 import { changeName } from "../store/store";
 import { useSelector } from "react-redux";
-import { notification } from 'antd';
-import { routerBeforeEach } from "../utils/beforeEach"
+import { notification } from "antd";
+import { routerBeforeEach } from "../utils/beforeEach";
 import { useRouter } from "next/router";
 import axios from "axios";
-
+import { httpHost, wsHOST } from "../utils/request";
 
 export default function Chat() {
-  const router=useRouter()
-  const socket = io("http://127.0.0.1:8010");
+  const router = useRouter();
+  const socket = io(wsHOST);
   const dispatch = useDispatch();
   const input = useRef<HTMLInputElement>(null);
   const [currentReceiver, setCurrentReceiver] = useState("");
-  const [myself,setMyself]=useState({
-    username:'',
-    userPic:''
-  })
+  const [myself, setMyself] = useState({
+    username: "",
+    userPic: "",
+  });
   const [message, setMessage] = useState([
     {
       sender: "",
@@ -30,7 +30,8 @@ export default function Chat() {
       receiver: "",
     },
   ]);
-  const localSender = useSelector((store: any) => store.username.value);
+  let localSender = useSelector((store: any) => store.username.value);
+
   //用户列表
   const [userList, setUserList] = useState([
     {
@@ -40,19 +41,20 @@ export default function Chat() {
   ]);
 
   const getUserList = async () => {
-     axios.post('http://127.0.0.1:3000/user/all').then(res=>{
+    axios.post(`${httpHost}user/all`).then((res) => {
+      console.log("用户列表", res.data);
+
       setUserList(res.data);
-    })
+    });
     // console.log("用户列表", result);
-    
   };
 
-  const getCurrentMessages =  async() => {
-    console.log('开始获得消息');
+  const getCurrentMessages = async () => {
+    console.log("开始获得消息");
     //设置定时器，先让页面加载完，高度发生变化，才能到最底部，不然只能到倒数第二条
     setTimeout(() => {
-      let showArea =document.getElementById('showArea') as HTMLElement
-    showArea .scrollTo(0,showArea.scrollHeight)
+      let showArea = document.getElementById("showArea") as HTMLElement;
+      showArea.scrollTo(0, showArea.scrollHeight);
     }, 100);
     let result = await requests({
       url: "message/getlist",
@@ -62,20 +64,19 @@ export default function Chat() {
         receiver: currentReceiver,
       },
     });
-    console.log('消息列表',result.data);
-    
-    setMessage(result.data);
+    console.log("消息列表", result.data);
+
+    setMessage(result.data.data);
     //滚动到屏幕最底部
-    
   };
 
   const sendMessage = async () => {
-    if(localSender==currentReceiver || currentReceiver==""){
-      input.current!.value=''
-      return notification['info']({
-        message:'您必须选择一个人发信息',
-        duration:2
-      })
+    if (localSender == currentReceiver || currentReceiver == "") {
+      input.current!.value = "";
+      return notification["info"]({
+        message: "您必须选择一个人发信息",
+        duration: 2,
+      });
     }
     const message = input.current!.value;
     let result = await requests({
@@ -88,38 +89,41 @@ export default function Chat() {
       },
     });
     console.log("发送信息", result);
-      socket.emit("getmessage");
-      input.current!.value = "";
+    socket.emit("getmessage");
+    input.current!.value = "";
   };
 
-  const getMyself=async ()=>{
-    axios.get('http://127.0.0.1:3001',{
-      params:{
-        username:localSender
-      }
-    }).then(res=>{
-      setMyself(res.data)
-    })
-    
-  }
+  const getMyself = async () => {
+    axios
+      .get(`${httpHost}user/findme`, {
+        params: {
+          username: localSender,
+        },
+      })
+      .then((res) => {
+        console.log("----->", res.data);
 
-  useEffect(()=>{
-    getCurrentMessages()
-  },[currentReceiver])
+        setMyself(res.data);
+      });
+  };
 
   useEffect(() => {
-    routerBeforeEach(router)
-    getMyself();
+    getCurrentMessages();
+  }, [currentReceiver]);
+
+  useEffect(() => {
+    routerBeforeEach(router);
     getUserList();
     dispatch(changeName(sessionStorage.getItem("username") as string));
+    getMyself();
   }, []);
 
-  useEffect(()=>{
+  useEffect(() => {
     socket.on("showMessage", getCurrentMessages);
-    return ()=>{
-      socket.off('showMessage')
-    }
-  })
+    return () => {
+      socket.off("showMessage");
+    };
+  });
 
   return (
     <ChatContainer>
@@ -132,7 +136,7 @@ export default function Chat() {
         <div className="left">
           <div className="showArea" id="showArea">
             {message.map((message, index) => {
-              return message.sender ==  localSender? (
+              return message.sender == localSender ? (
                 <div className="newItem item_right" key={index}>
                   <span>{message.content}</span>
                 </div>
@@ -154,15 +158,22 @@ export default function Chat() {
           {userList.map((user, index) => {
             return (
               <div
-                className={currentReceiver==user.username? "right_item selected": "right_item"}
+                className={currentReceiver == user.username ? "right_item selected" : "right_item"}
                 key={index}
-                onClick={()=>setCurrentReceiver(user.username)
-                }
+                onClick={() => setCurrentReceiver(user.username)}
               >
                 <img src={user.userPic} alt="" />
                 <span>{user.username}</span>
-                {user.username==localSender? (<span className="meSpan">当前用户</span>):(<span></span>)}
-                {user.username==currentReceiver&& user.username!==localSender? (<span className="meSpan">当前聊天用户</span>):(<span></span>)}
+                {user.username == localSender ? (
+                  <span className="meSpan">当前用户</span>
+                ) : (
+                  <span></span>
+                )}
+                {user.username == currentReceiver && user.username !== localSender ? (
+                  <span className="meSpan">当前聊天用户</span>
+                ) : (
+                  <span></span>
+                )}
               </div>
             );
           })}
@@ -233,7 +244,7 @@ const ChatContainer = styled.div`
         font-size: 18px;
         color: #e0e0e0;
         position: relative;
-        span{
+        span {
           padding: 0 20px;
           background-color: #6d6d6d;
           height: 30px;
@@ -246,7 +257,6 @@ const ChatContainer = styled.div`
         span {
           /* position: absolute; */
           right: 20px;
-
         }
       }
     }
@@ -313,14 +323,14 @@ const ChatContainer = styled.div`
         font-size: 20px;
         color: #fff;
       }
-      .meSpan{
+      .meSpan {
         position: absolute;
         top: 10px;
         font-size: 15px;
         color: orange;
       }
     }
-    .selected{
+    .selected {
       background-color: #4a3535;
     }
   }

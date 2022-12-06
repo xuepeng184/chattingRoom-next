@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "server": "next build && next start -p 3001"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^1.8.6",
