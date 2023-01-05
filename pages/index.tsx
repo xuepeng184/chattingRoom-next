@@ -91,6 +91,7 @@ export default function Home() {
     }
     //存储数据
     sessionStorage.setItem("token", result.data.user_token);
+    sessionStorage.setItem("refreshToken", result.data.refresh_token);
     sessionStorage.setItem("username", values.username);
     router.push("/chat");
   };

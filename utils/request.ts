@@ -1,4 +1,6 @@
 import axios from "axios";
+//引入401对应的处理逻辑
+import handle401 from "./handle401";
 
 export const httpHost =
   process.env.NODE_ENV == "development" ? "http://localhost:3000/" : "http://49.233.37.228:3000/";
@@ -15,7 +17,7 @@ requests.interceptors.request.use(
   function (config) {
     //给头部带上token
     if (sessionStorage.getItem("token")) {
-      config.headers!.Authorization = `Bearer ${sessionStorage.getItem("token")}`;
+      config.headers!.Authorization = `Bearer ${sessionStorage.getItem("token")}`;     
     }
     // 在发送请求之前做些什么
     return config;
@@ -34,6 +36,10 @@ requests.interceptors.response.use(
   },
   function (error) {
     // 对响应错误做点什么
+    const {status,config}=error.response;
+    if(status==401){
+      return handle401(config)
+    }
     return Promise.reject(error);
   }
 );

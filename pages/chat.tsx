@@ -10,7 +10,6 @@ import { useSelector } from "react-redux";
 import { notification } from "antd";
 import { routerBeforeEach } from "../utils/beforeEach";
 import { useRouter } from "next/router";
-import axios from "axios";
 import { httpHost, wsHOST } from "../utils/request";
 
 export default function Chat() {
@@ -41,16 +40,20 @@ export default function Chat() {
   ]);
 
   const getUserList = async () => {
-    axios.post(`${httpHost}user/all`).then((res) => {
+    requests({
+      method: "post",
+      url: `${httpHost}user/all`,
+      // headers:{
+      //   'Authorization':`Bearer ${sessionStorage.getItem('token')}`
+      // }
+    }).then((res) => {
       console.log("用户列表", res.data);
-
       setUserList(res.data);
     });
     // console.log("用户列表", result);
   };
 
   const getCurrentMessages = async () => {
-    console.log("开始获得消息");
     //设置定时器，先让页面加载完，高度发生变化，才能到最底部，不然只能到倒数第二条
     setTimeout(() => {
       let showArea = document.getElementById("showArea") as HTMLElement;
@@ -64,7 +67,7 @@ export default function Chat() {
         receiver: currentReceiver,
       },
     });
-    console.log("消息列表", result.data);
+    // console.log("消息列表", result.data);
 
     setMessage(result.data.data);
     //滚动到屏幕最底部
@@ -94,17 +97,17 @@ export default function Chat() {
   };
 
   const getMyself = async () => {
-    axios
-      .get(`${httpHost}user/findme`, {
-        params: {
-          username: localSender,
-        },
-      })
-      .then((res) => {
-        console.log("----->", res.data);
-
-        setMyself(res.data);
-      });
+    setTimeout(() => {
+      requests
+        .get(`${httpHost}user/findme`, {
+          params: {
+            username: localSender,
+          },
+        })
+        .then((res) => {
+          setMyself(res.data);
+        });
+    }, 2000);
   };
 
   useEffect(() => {
@@ -115,8 +118,11 @@ export default function Chat() {
     routerBeforeEach(router);
     getUserList();
     dispatch(changeName(sessionStorage.getItem("username") as string));
-    getMyself();
   }, []);
+
+  useEffect(() => {
+    getMyself();
+  }, [localSender]);
 
   useEffect(() => {
     socket.on("showMessage", getCurrentMessages);
